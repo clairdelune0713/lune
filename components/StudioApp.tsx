@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowRight, 
@@ -29,13 +29,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   const [activePage, setActivePage] = useState<PageType>('home');
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
-  
-  // Custom trailing cursor states
-  const cursorRef = useRef<HTMLDivElement>(null);
-  const cursorFollowRef = useRef<HTMLDivElement>(null);
-
-  const [isCursorHovering, setIsCursorHovering] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   // Hover state for center links on the landing menu
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -43,51 +36,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   // Form states for luxury contact modal
   const [contactForm, setContactForm] = useState({ name: '', email: '', company: '', message: '' });
   const [formSubmitted, setFormSubmitted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  }, []);
-
-  useEffect(() => {
-    if (isTouchDevice) return;
-
-    const cursor = cursorRef.current;
-    const follower = cursorFollowRef.current;
-    if (!cursor || !follower) return;
-
-    let mouseX = 0;
-    let mouseY = 0;
-    let followerX = 0;
-    let followerY = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      
-      cursor.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
-    };
-
-    const updateFollower = () => {
-      followerX += (mouseX - followerX) * 0.14;
-      followerY += (mouseY - followerY) * 0.14;
-      
-      const isHovering = follower.getAttribute('data-hovering') === 'true';
-      const scaleVal = isHovering ? 1.6 : 1.0;
-      
-      follower.style.transform = `translate3d(${followerX}px, ${followerY}px, 0) translate(-50%, -50%) scale(${scaleVal})`;
-      
-      requestAnimationFrame(updateFollower);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    const animId = requestAnimationFrame(updateFollower);
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      cancelAnimationFrame(animId);
-    };
-  }, [isTouchDevice]);
 
   // Parse path to set initial page
   useEffect(() => {
@@ -265,25 +213,10 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   ];
 
   return (
-    <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none cursor-none">
+    <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none">
       
       {/* Persistent WebGL Context */}
       <WebGLCanvas activePage={activePage} />
-
-      {/* Custom Trailing Cursor Follower */}
-      {!isTouchDevice && (
-        <>
-          <div 
-            ref={cursorRef} 
-            className="fixed top-0 left-0 w-1.5 h-1.5 bg-[#bf9b30] rounded-full pointer-events-none z-50 transition-opacity duration-300"
-          />
-          <div 
-            ref={cursorFollowRef} 
-            data-hovering={isCursorHovering}
-            className="fixed top-0 left-0 w-7 h-7 border border-[#bf9b30]/60 rounded-full pointer-events-none z-50 transition-all duration-300"
-          />
-        </>
-      )}
 
       <AnimatePresence mode="wait">
         {/* LANDING PAGE / MENU VIEW (Image 1) */}
@@ -303,8 +236,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div 
                 className="flex items-center gap-3 cursor-pointer group"
                 onClick={() => navigateTo('home')}
-                onMouseEnter={() => setIsCursorHovering(true)}
-                onMouseLeave={() => setIsCursorHovering(false)}
+
               >
                 <div className="w-8 h-8 rounded-full border border-[#bf9b30]/40 flex items-center justify-center font-serif text-xs text-[#bf9b30] tracking-wider font-bold">G</div>
                 <div className="flex flex-col text-left">
@@ -317,8 +249,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <button 
                 onClick={() => navigateTo('the-studio')}
                 className="flex items-center gap-2 group cursor-pointer transition-all duration-300"
-                onMouseEnter={() => setIsCursorHovering(true)}
-                onMouseLeave={() => setIsCursorHovering(false)}
+
               >
                 <span className="font-mono text-[9px] tracking-[0.25em] text-white/60 group-hover:text-white uppercase transition-colors">Close</span>
                 <div className="w-4 h-4 border border-white/20 group-hover:border-white/50 rounded flex items-center justify-center transition-colors">
@@ -339,14 +270,8 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                   >
                     <button
                       onClick={() => navigateTo(item.id as PageType)}
-                      onMouseEnter={() => {
-                        setHoveredIndex(idx);
-                        setIsCursorHovering(true);
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredIndex(null);
-                        setIsCursorHovering(false);
-                      }}
+                      onMouseEnter={() => setHoveredIndex(idx)}
+                      onMouseLeave={() => setHoveredIndex(null)}
                       className={`font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-wide transition-all duration-500 cursor-pointer block mx-auto py-1 outline-none ${
                         hoveredIndex === null
                           ? 'text-[#e5e5e5]'
@@ -369,8 +294,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <button 
                 onClick={() => setIsProjectsOpen(true)}
                 className="relative pb-1 group font-mono text-[9px] tracking-[0.25em] text-white/55 hover:text-white transition-colors uppercase cursor-pointer flex items-center gap-1"
-                onMouseEnter={() => setIsCursorHovering(true)}
-                onMouseLeave={() => setIsCursorHovering(false)}
+
               >
                 <span>See all projects</span>
                 <span className="inline-block transform group-hover:translate-x-0.5 transition-transform">↖</span>
@@ -382,8 +306,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 <button 
                   onClick={() => setIsContactOpen(true)}
                   className="relative pb-2 group font-serif text-xs tracking-[0.1em] text-white/60 hover:text-white transition-colors cursor-pointer"
-                  onMouseEnter={() => setIsCursorHovering(true)}
-                  onMouseLeave={() => setIsCursorHovering(false)}
+
                 >
                   <span>Contact us</span>
                   <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
@@ -416,8 +339,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div 
                 className="flex items-center gap-2 cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
                 onClick={() => navigateTo('home')}
-                onMouseEnter={() => setIsCursorHovering(true)}
-                onMouseLeave={() => setIsCursorHovering(false)}
+
               >
                 <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center font-serif text-[10px] text-white">G</div>
               </div>
@@ -427,8 +349,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 <button 
                   onClick={() => navigateTo('home')}
                   className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
-                  onMouseEnter={() => setIsCursorHovering(true)}
-                  onMouseLeave={() => setIsCursorHovering(false)}
+
                 >
                   <span>Back</span>
                   <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
@@ -439,8 +360,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <button 
                 onClick={() => setIsProjectsOpen(true)}
                 className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/30 hover:text-white transition-colors"
-                onMouseEnter={() => setIsCursorHovering(true)}
-                onMouseLeave={() => setIsCursorHovering(false)}
+
               >
                 PROJECTS
               </button>
@@ -479,8 +399,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 <button 
                   onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage)}
                   className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
-                  onMouseEnter={() => setIsCursorHovering(true)}
-                  onMouseLeave={() => setIsCursorHovering(false)}
+
                 >
                   <span>Next</span>
                   <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />

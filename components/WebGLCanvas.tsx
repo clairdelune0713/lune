@@ -135,28 +135,39 @@ function createParticleTexture() {
 }
 
 // Dynamic Texture Generator for Roman Numerals (Crisp vector rendering + beautiful glow)
-function createRomanNumeralTexture(numeral: string) {
+function createRomanNumeralTexture(numeral: string, fontFamily: string) {
+  const size = 1024;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 512, 512);
+    ctx.clearRect(0, 0, size, size);
     
     // Setup elegant typography
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    // Setup glow effect (soft drop shadow)
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.95)';
-    ctx.shadowBlur = 45;
+    // Multi-pass glow: draw text multiple times with increasing blur for a rich bloom
+    const passes = [
+      { blur: 80, alpha: 0.3 },
+      { blur: 40, alpha: 0.5 },
+      { blur: 15, alpha: 0.8 },
+      { blur: 0,  alpha: 1.0 },
+    ];
+
+    // Scale font size based on numeral length so "III" fits
+    const fontSize = numeral.length <= 2 ? 420 : (numeral.length === 3 ? 340 : 280);
     
-    // Fill with glowing color
-    ctx.fillStyle = '#ffffff';
-    
-    // Draw numeral in the center using Cormorant Garamond / Serif
-    ctx.font = '300 240px var(--font-serif), Cormorant Garamond, Times New Roman, serif';
-    ctx.fillText(numeral, 256, 230); // shift slightly up to offset water reflection line
+    for (const pass of passes) {
+      ctx.save();
+      ctx.shadowColor = `rgba(255, 255, 255, ${pass.alpha})`;
+      ctx.shadowBlur = pass.blur;
+      ctx.fillStyle = `rgba(255, 255, 255, ${pass.alpha})`;
+      ctx.font = `300 ${fontSize}px ${fontFamily}`;
+      ctx.fillText(numeral, size / 2, size * 0.42); // shift up to leave room for water reflection
+      ctx.restore();
+    }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -198,25 +209,33 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     bgTexture.minFilter = THREE.LinearFilter;
     bgTexture.generateMipmaps = false;
 
+    // Resolve the actual font-family from CSS variable (Canvas 2D can't use var())
+    const resolvedFont = getComputedStyle(document.documentElement)
+      .getPropertyValue('--font-serif').trim() || '"Cormorant Garamond", serif';
+    const fontFamily = `${resolvedFont}, "Cormorant Garamond", "Times New Roman", serif`;
+
     // Create Roman numeral textures dynamically
     const numeralTextures: Record<string, THREE.Texture> = {
-      'the-studio': createRomanNumeralTexture('I'),
-      'our-approach': createRomanNumeralTexture('II'),
-      'services': createRomanNumeralTexture('III'),
-      'awards': createRomanNumeralTexture('IV'),
-      'clients': createRomanNumeralTexture('V'),
+      'the-studio': createRomanNumeralTexture('I', fontFamily),
+      'our-approach': createRomanNumeralTexture('II', fontFamily),
+      'services': createRomanNumeralTexture('III', fontFamily),
+      'awards': createRomanNumeralTexture('IV', fontFamily),
+      'clients': createRomanNumeralTexture('V', fontFamily),
     };
 
-    // Redraw textures when google fonts are loaded to ensure Cormorant Garamond is applied
+    // Redraw textures when google fonts are loaded to ensure correct font is applied
     if (typeof document !== 'undefined' && 'fonts' in document) {
       document.fonts.ready.then(() => {
-        // Redraw textures with loaded font
+        const updatedFont = getComputedStyle(document.documentElement)
+          .getPropertyValue('--font-serif').trim() || '"Cormorant Garamond", serif';
+        const updatedFontFamily = `${updatedFont}, "Cormorant Garamond", "Times New Roman", serif`;
+
         const pages = ['the-studio', 'our-approach', 'services', 'awards', 'clients'];
         const numerals = ['I', 'II', 'III', 'IV', 'V'];
         
         pages.forEach((p, idx) => {
           const oldTex = numeralTextures[p];
-          numeralTextures[p] = createRomanNumeralTexture(numerals[idx]);
+          numeralTextures[p] = createRomanNumeralTexture(numerals[idx], updatedFontFamily);
           
           // If the old texture is currently loaded in uniforms, update it immediately
           if (letterUniforms.uTexture1.value === oldTex) {
