@@ -153,22 +153,24 @@ const bgFragmentShader = `
       maskVal = hoverMask.r;
     }
 
-    // Compute brilliant, dramatic glowing effects
-    float edgeGlow = smoothstep(0.01, 0.45, maskVal) * 0.4;
-    float mainGlow = maskVal;
+    // Compute subtle, elegant bronze-gold glowing effects
+    // We reduce the intensity to keep it semi-transparent and completely luxury-oriented
+    float softGlow = maskVal * 0.42; 
+    float softEdge = smoothstep(0.01, 0.35, maskVal) * 0.18;
+    float glowVal = (softGlow + softEdge) * uHoverProgress;
     
-    // Combine core shape and soft outer bloom
-    float totalGlow = (mainGlow * 2.5 + edgeGlow * 1.2) * uHoverProgress;
+    // Warm bronze-gold / rich amber lighting signature
+    vec3 bronzeGold = vec3(0.95, 0.72, 0.45) * 1.25; // warm golden glow
+    vec3 amberLight = vec3(0.48, 0.32, 0.18) * 0.85; // deep amber shadows
     
-    // High-intensity molten core color (pure white-hot center, fiery golden-amber edges)
-    vec3 lightColor = vec3(1.0, 0.98, 0.88) * 3.5;  // super bright, white-hot core
-    vec3 auraColor = vec3(0.85, 0.55, 0.30) * 1.5;  // intense golden-amber aura
+    vec3 letterGlow = mix(amberLight, bronzeGold, maskVal) * glowVal;
     
-    // Smoothly blend outer aura to inner core based on glow strength
-    vec3 finalGlow = mix(auraColor, lightColor, smoothstep(0.2, 0.8, totalGlow)) * totalGlow;
+    // Let the background stone's relief details (luminance) modulate the glow,
+    // so that highlights and shadows of birds/leaves are fully preserved!
+    letterGlow *= (0.25 + gray * 0.75);
 
-    // Combine background grayscale and Roman numeral lighting
-    vec3 finalColor = mono + finalGlow;
+    // Combine background mono color and custom textured lighting
+    vec3 finalColor = mono + letterGlow;
 
     gl_FragColor = vec4(finalColor, uOpacity);
   }
