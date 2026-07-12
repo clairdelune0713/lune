@@ -22,7 +22,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Immersive Garden — The Studio',
+  title: 'OneCool AIFX',
   description: 'A beautiful, immersive digital craft and motion design studio experience.',
 };
 

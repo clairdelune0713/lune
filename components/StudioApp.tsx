@@ -81,7 +81,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   // Update URL path and page state smoothly
   const navigateTo = (page: PageType) => {
     setActivePage(page);
-    const path = page === 'home' ? '/' : `/the-studio/${page}`;
+    const path = page === 'home' ? '/' : page === 'the-studio' ? '/the-studio' : `/${page}`;
     window.history.pushState(null, '', path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -244,10 +244,10 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 onClick={() => navigateTo('home')}
 
               >
-                <div className="w-8 h-8 rounded-full border border-[#bf9b30]/40 flex items-center justify-center font-serif text-xs text-[#bf9b30] tracking-wider font-bold">G</div>
+                <div className="w-8 h-8 rounded-full border border-[#bf9b30]/40 flex items-center justify-center font-serif text-xs text-[#bf9b30] tracking-wider font-bold">X</div>
                 <div className="flex flex-col text-left">
-                  <span className="font-serif tracking-[0.3em] text-[10px] text-white/90 font-bold leading-none">IMMERSIVE G</span>
-                  <span className="font-mono text-[6px] text-[#bf9b30]/70 tracking-widest mt-0.5">THE STUDIO</span>
+                  <span className="font-serif tracking-[0.3em] text-[10px] text-white/90 font-bold leading-none">AIFX</span>
+                  <span className="font-mono text-[6px] text-[#bf9b30]/70 tracking-widest mt-0.5">ONECOOL</span>
                 </div>
               </div>
 
