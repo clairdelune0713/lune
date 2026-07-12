@@ -155,12 +155,14 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     title: string; 
     description: string; 
     nextPage: PageType;
+    prevPage: PageType;
     detailsList: Array<{ title: string; desc: string; icon?: React.ReactNode }>;
   }> = {
     'the-studio': {
       title: 'The studio',
       description: 'For over 10 years, creating exceptional and unprecedented products and experiences has been our passion, driven by innovative thinking and highly precise execution.',
       nextPage: 'our-approach',
+      prevPage: 'clients',
       detailsList: [
         { title: 'OUR FOUNDATION', desc: 'Established in Paris, we partner with world-renowned luxury houses to translate their heritage into physical-like digital sculptures.', icon: <Sparkles className="w-4 h-4 text-[#bf9b30]" /> },
         { title: 'EMOTION BY DESIGN', desc: 'We design interfaces with visual poetry, deliberate typography hierarchy, and strict pacing control.', icon: <Compass className="w-4 h-4 text-[#bf9b30]" /> }
@@ -170,6 +172,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
       title: 'Our approach',
       description: 'We merge artistic design with clean front-end engineering. Our phased strategy balances bold concepts, refined art direction, and meticulous performance standards.',
       nextPage: 'services',
+      prevPage: 'the-studio',
       detailsList: [
         { title: 'ART DIRECTION', desc: 'Formulating a unique visual signature. Designing custom luxury typography pairings and precise motion theories.', icon: <Sparkles className="w-4 h-4 text-[#bf9b30]" /> },
         { title: 'CREATIVE CODE', desc: 'Developing fluid, pixel-perfect layouts using React, modern springs, and responsive boundaries.', icon: <Compass className="w-4 h-4 text-[#bf9b30]" /> }
@@ -179,6 +182,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
       title: 'Services',
       description: 'From high-end art direction and branding to custom interactive development, our capabilities are focused on creating unforgettable digital spaces.',
       nextPage: 'awards',
+      prevPage: 'our-approach',
       detailsList: [
         { title: 'UX & ART DIRECTION', desc: 'Bespoke branding and visual layout design focused on storytelling and emotional user journeys.', icon: <Compass className="w-4 h-4 text-[#bf9b30]" /> },
         { title: 'INTERACTIVE FRONTEND', desc: 'Ultra-fast, accessible development that scales seamlessly across device viewports.', icon: <Sparkles className="w-4 h-4 text-[#bf9b30]" /> }
@@ -188,6 +192,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
       title: 'Awards',
       description: 'Our dedication to digital craft, premium typography, and fluid movement has been recognized globally with multiple Site of the Year and Agency of the Year honors.',
       nextPage: 'clients',
+      prevPage: 'services',
       detailsList: [
         { title: 'AWWWARDS SOTY', desc: 'Winner of site of the year for groundbreaking aesthetic execution and layout fluidity.', icon: <Award className="w-4 h-4 text-[#bf9b30]" /> },
         { title: 'THE FWA & WEBBY', desc: 'Recognized by international academies for superior design quality and interactive standards.', icon: <Award className="w-4 h-4 text-[#bf9b30]" /> }
@@ -197,6 +202,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
       title: 'Clients',
       description: 'We collaborate with prestigious luxury houses, visionary creators, and forward-thinking enterprises, translating their heritage into outstanding interactive monuments.',
       nextPage: 'the-studio',
+      prevPage: 'awards',
       detailsList: [
         { title: 'LUXURY BRANDING', desc: 'Partnering with Hermès, Chanel, and Cartier to draft high-end promotional portals.', icon: <Users className="w-4 h-4 text-[#bf9b30]" /> },
         { title: 'CREATIVE ENTERPRISES', desc: 'Connecting state-of-the-art tech with traditional art showcases for a global audience.', icon: <Users className="w-4 h-4 text-[#bf9b30]" /> }
@@ -216,7 +222,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none">
       
       {/* Persistent WebGL Context */}
-      <WebGLCanvas activePage={activePage} />
+      <WebGLCanvas activePage={activePage} hoveredIndex={hoveredIndex} />
 
       <AnimatePresence mode="wait">
         {/* LANDING PAGE / MENU VIEW (Image 1) */}
@@ -260,27 +266,32 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
 
             {/* VERTICALLY STACKED CENTRED LINKS */}
             <div className="relative flex flex-col items-center justify-center my-auto py-12 z-10 text-center">
-              <div className="flex flex-col space-y-4 sm:space-y-6 md:space-y-8 max-w-2xl">
+              <div className="flex flex-col space-y-3 sm:space-y-4 md:space-y-5 max-w-3xl">
                 {menuItems.map((item, idx) => (
                   <motion.div
                     key={item.id}
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 35 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ delay: idx * 0.08, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                    className="group"
                   >
                     <button
                       onClick={() => navigateTo(item.id as PageType)}
                       onMouseEnter={() => setHoveredIndex(idx)}
                       onMouseLeave={() => setHoveredIndex(null)}
-                      className={`font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-wide transition-all duration-500 cursor-pointer block mx-auto py-1 outline-none ${
+                      className={`font-serif text-lg sm:text-2xl md:text-3xl lg:text-[2.2rem] font-light tracking-[0.25em] hover:tracking-[0.38em] uppercase transition-all duration-700 cursor-pointer flex items-center justify-center gap-3 sm:gap-4 mx-auto py-2 outline-none ${
                         hoveredIndex === null
-                          ? 'text-[#e5e5e5]'
+                          ? 'text-white/70'
                           : hoveredIndex === idx
-                          ? 'text-white scale-[1.03] drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]'
-                          : 'text-[#e5e5e5]/25 scale-[0.97]'
+                          ? 'text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] scale-[1.01]'
+                          : 'text-white/20 scale-[0.99]'
                       }`}
                     >
-                      {item.label}
+                      <span className="font-mono text-[8px] sm:text-[9px] text-[#bf9b30]/50 group-hover:text-[#bf9b30] tracking-widest leading-none transition-colors duration-500 relative -top-0.5">
+                        {item.count}
+                      </span>
+                      <span className="text-white/10 text-[9px] sm:text-[10px] select-none transition-opacity duration-500 group-hover:opacity-40">—</span>
+                      <span>{item.label}</span>
                     </button>
                   </motion.div>
                 ))}
@@ -372,44 +383,58 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
             </div>
 
             {/* TYPOGRAPHIC DESCRIPTION & CONTROLS BLOCK (Image 2) */}
-            <div className="relative w-full grid grid-cols-1 md:grid-cols-12 items-end gap-6 z-10 pb-2">
+            <div className="relative w-full grid grid-cols-1 md:grid-cols-12 items-end gap-6 sm:gap-10 z-10 pb-2">
               
               {/* Bottom-Left Column: Title & Paragraph (Image 2 layout) */}
-              <div className="md:col-span-6 flex flex-col text-left space-y-3 max-w-sm sm:max-w-xl">
+              <div className="md:col-span-7 flex flex-col text-left space-y-3 max-w-sm sm:max-w-2xl">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activePage}
-                    initial={{ opacity: 0, x: -15 }}
+                    initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 15 }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <h2 className="font-serif text-[30px] md:text-[2.6vw] font-normal leading-none text-white mb-3">
+                    <span className="font-mono text-[8px] sm:text-[9px] text-[#bf9b30] tracking-[0.3em] uppercase block mb-1">
+                      CHAPTER 0{menuItems.findIndex(i => i.id === activePage) + 1}
+                    </span>
+                    <h2 className="font-serif text-2xl sm:text-3xl md:text-[2.4vw] font-light tracking-[0.05em] uppercase text-white mb-2 leading-none">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].title}
                     </h2>
-                    <p className="font-serif text-[17px] md:text-[1.55vw] text-white/60 leading-relaxed font-light">
+                    <p className="font-serif text-xs sm:text-sm md:text-[1.05vw] text-white/50 leading-relaxed font-light tracking-wide max-w-lg">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].description}
                     </p>
                   </motion.div>
                 </AnimatePresence>
               </div>
 
-              {/* NEXT BUTTON (Bottom Center - Image 2) */}
-              <div className="md:col-span-3 flex justify-center py-2 md:py-0">
-                <button 
-                  onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage)}
-                  className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
-
-                >
-                  <span>Next</span>
-                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
-                </button>
+              {/* PAGINATION: PREV & NEXT BUTTONS (Bottom Center - Image 2) */}
+              <div className="md:col-span-3 flex justify-start md:justify-center py-4 md:py-0">
+                <div className="flex items-center gap-6 sm:gap-8 font-mono text-[9px] tracking-[0.25em] uppercase text-white/40 select-none">
+                  <button 
+                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].prevPage)}
+                    className="group hover:text-white transition-colors cursor-pointer relative pb-1 flex items-center gap-1.5"
+                  >
+                    <span className="inline-block transform group-hover:-translate-x-0.5 transition-transform duration-300">←</span>
+                    <span>Prev</span>
+                    <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
+                  </button>
+                  <span className="text-[#bf9b30]/35 font-light">|</span>
+                  <button 
+                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage)}
+                    className="group hover:text-white transition-colors cursor-pointer relative pb-1 flex items-center gap-1.5"
+                  >
+                    <span>Next</span>
+                    <span className="inline-block transform group-hover:translate-x-0.5 transition-transform duration-300">→</span>
+                    <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
+                  </button>
+                </div>
               </div>
 
               {/* Spinner indicator (Bottom Right) */}
-              <div className="md:col-span-3 flex justify-end items-center gap-3">
-                <span className="font-mono text-[7px] text-white/20 tracking-wider">
-                  0{menuItems.findIndex(i => i.id === activePage) + 1} / 05
+              <div className="md:col-span-2 flex justify-end items-center gap-4">
+                <span className="font-mono text-[7px] text-white/20 tracking-[0.2em] hidden sm:inline">
+                  LUNE / ST.
                 </span>
                 <div className="w-5 h-5 border border-white/10 border-t-[#bf9b30] rounded-full animate-spin" />
               </div>

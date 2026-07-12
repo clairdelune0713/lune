@@ -14,6 +14,7 @@ import floralV from '@/src/assets/images/floral_V.png';
 
 interface WebGLCanvasProps {
   activePage: string;
+  hoveredIndex: number | null;
 }
 
 // Custom Vertex Shader
@@ -90,33 +91,86 @@ const fragmentShader = `
   }
 `;
 
-// Background Fragment Shader (Grayscale cover-fit)
+// Background Fragment Shader (Grayscale cover-fit + organic motion & breakthrough hover glow)
 const bgFragmentShader = `
   uniform sampler2D uTexture;
+  uniform sampler2D uHoverTexture;
+  uniform float uHoverProgress;
   uniform float uOpacity;
   uniform float uAspect;
   uniform float uTextureAspect;
+  uniform float uTime;
+  uniform vec2 uMouse;
+  uniform float uMouseStrength;
   varying vec2 vUv;
 
   void main() {
     vec2 uv = vUv;
 
-    // Cover calculation
+    // Cover calculation for background texture
+    vec2 bgUv = uv;
     if (uAspect > uTextureAspect) {
       float s = uTextureAspect / uAspect;
-      uv.y = (uv.y - 0.5) * s + 0.5;
+      bgUv.y = (bgUv.y - 0.5) * s + 0.5;
     } else {
       float s = uAspect / uTextureAspect;
-      uv.x = (uv.x - 0.5) * s + 0.5;
+      bgUv.x = (bgUv.x - 0.5) * s + 0.5;
     }
 
-    vec4 color = texture2D(uTexture, uv);
+    // 1. Subtle, slow organic background liquid wave motion ("breathing" stone bas-relief)
+    vec2 waveUv = bgUv;
+    waveUv.x += sin(bgUv.y * 5.0 + uTime * 0.15) * 0.005;
+    waveUv.y += cos(bgUv.x * 5.0 + uTime * 0.12) * 0.005;
+
+    // 2. Localized mouse liquid ripple displacement on the stone surface itself
+    float mouseDist = distance(uv, uMouse);
+    if (mouseDist < 0.4) {
+      float force = (1.0 - mouseDist / 0.4) * uMouseStrength * 0.008;
+      float ripple = sin(mouseDist * 30.0 - uTime * 2.5);
+      waveUv += normalize(uv - uMouse) * ripple * force;
+    }
+
+    vec4 color = texture2D(uTexture, waveUv);
     
-    // Grayscale with subtle warm shift for luxury feel
+    // Grayscale with subtle warm shift for high-end feel
     float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
     vec3 mono = vec3(gray * 0.38, gray * 0.36, gray * 0.34);
 
-    gl_FragColor = vec4(mono, uOpacity);
+    // 3. Hover reveal of the high-intensity glowing Roman numeral breakthrough (Image 2 style)
+    // To prevent stretching and match the central letter aspect ratio perfectly,
+    // we scale the hover UV coordinates centered at (0.5, 0.5) to keep it 1:1.
+    vec2 hoverUv = uv;
+    if (uAspect > 1.0) {
+      hoverUv.x = (uv.x - 0.5) * uAspect + 0.5;
+    } else {
+      hoverUv.y = (uv.y - 0.5) / uAspect + 0.5;
+    }
+
+    // Only sample if within the bounds of the 1:1 square
+    float maskVal = 0.0;
+    if (hoverUv.x >= 0.0 && hoverUv.x <= 1.0 && hoverUv.y >= 0.0 && hoverUv.y <= 1.0) {
+      vec4 hoverMask = texture2D(uHoverTexture, hoverUv);
+      maskVal = hoverMask.r;
+    }
+
+    // Compute brilliant, dramatic glowing effects
+    float edgeGlow = smoothstep(0.01, 0.45, maskVal) * 0.4;
+    float mainGlow = maskVal;
+    
+    // Combine core shape and soft outer bloom
+    float totalGlow = (mainGlow * 2.5 + edgeGlow * 1.2) * uHoverProgress;
+    
+    // High-intensity molten core color (pure white-hot center, fiery golden-amber edges)
+    vec3 lightColor = vec3(1.0, 0.98, 0.88) * 3.5;  // super bright, white-hot core
+    vec3 auraColor = vec3(0.85, 0.55, 0.30) * 1.5;  // intense golden-amber aura
+    
+    // Smoothly blend outer aura to inner core based on glow strength
+    vec3 finalGlow = mix(auraColor, lightColor, smoothstep(0.2, 0.8, totalGlow)) * totalGlow;
+
+    // Combine background grayscale and Roman numeral lighting
+    vec3 finalColor = mono + finalGlow;
+
+    gl_FragColor = vec4(finalColor, uOpacity);
   }
 `;
 
@@ -155,9 +209,12 @@ const waterLineMap: Record<string, number> = {
   'clients': 0.09,
 };
 
-export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
+const menuSlugs = ['the-studio', 'our-approach', 'services', 'awards', 'clients'];
+
+export default function WebGLCanvas({ activePage, hoveredIndex }: WebGLCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const activePageRef = useRef<string>(activePage);
+  const hoveredIndexRef = useRef<number | null>(hoveredIndex);
 
   // Interaction tracking state refs (avoids direct dependency re-initializations)
   const mouse = useRef(new THREE.Vector2(0, 0));
@@ -167,6 +224,10 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
   useEffect(() => {
     activePageRef.current = activePage;
   }, [activePage]);
+
+  useEffect(() => {
+    hoveredIndexRef.current = hoveredIndex;
+  }, [hoveredIndex]);
 
   useEffect(() => {
     const currentMount = mountRef.current;
@@ -206,9 +267,14 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     
     const bgUniforms = {
       uTexture: { value: bgTexture },
+      uHoverTexture: { value: floralTextures['the-studio'] },
+      uHoverProgress: { value: 0 },
       uOpacity: { value: activePage === 'home' ? 0.85 : 0.08 },
       uAspect: { value: aspect },
       uTextureAspect: { value: 1920 / 1080 },
+      uTime: { value: 0 },
+      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+      uMouseStrength: { value: 0 },
     };
 
     const bgMaterial = new THREE.ShaderMaterial({
@@ -304,9 +370,9 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
 
       // Scale letter to show fully on all viewports
       if (w < 768) {
-        letterMesh.scale.setScalar(0.75);
+        letterMesh.scale.setScalar(0.55);
       } else {
-        letterMesh.scale.setScalar(1.1);
+        letterMesh.scale.setScalar(0.82);
       }
     };
     window.addEventListener('resize', handleResize);
@@ -320,7 +386,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       targetMouse.current.y = -(e.clientY / h) * 2 + 1;
 
       // 2. High-precision UV mapping on the centered square central letter plane
-      const scale = w < 768 ? 0.75 : 1.1;
+      const scale = w < 768 ? 0.55 : 0.82;
       const meshSize = 0.7 * scale * h; // Height and width of orthographic mesh in pixels
       const left = w / 2 - meshSize / 2;
       const top = h / 2 - meshSize / 2;
@@ -344,11 +410,55 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     const clock = new THREE.Clock();
     let animationFrameId: number;
 
+    let currentHoveredIndex: number | null = null;
+    let hoverGsapTween: gsap.core.Tween | null = null;
+
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
       const elapsedTime = clock.getElapsedTime();
       letterUniforms.uTime.value = elapsedTime;
+
+      // Update background uniforms
+      bgUniforms.uTime.value = elapsedTime;
+      bgUniforms.uMouse.value.copy(letterUniforms.uMouse.value);
+      bgUniforms.uMouseStrength.value = letterHoverStrength.current;
+
+      // Track and animate background hover breakthrough Roman numerals (Only on Home landing page)
+      if (activePageRef.current === 'home') {
+        if (hoveredIndexRef.current !== currentHoveredIndex) {
+          const nextIdx = hoveredIndexRef.current;
+          currentHoveredIndex = nextIdx;
+
+          if (nextIdx !== null) {
+            const slug = menuSlugs[nextIdx];
+            const tex = floralTextures[slug];
+            if (tex) {
+              bgUniforms.uHoverTexture.value = tex;
+            }
+
+            if (hoverGsapTween) hoverGsapTween.kill();
+            hoverGsapTween = gsap.to(bgUniforms.uHoverProgress, {
+              value: 1.0,
+              duration: 0.8,
+              ease: 'power2.out',
+            });
+          } else {
+            if (hoverGsapTween) hoverGsapTween.kill();
+            hoverGsapTween = gsap.to(bgUniforms.uHoverProgress, {
+              value: 0.0,
+              duration: 0.6,
+              ease: 'power2.out',
+            });
+          }
+        }
+      } else {
+        // Keep background clear when inside a subpage
+        if (bgUniforms.uHoverProgress.value !== 0) {
+          bgUniforms.uHoverProgress.value = 0;
+          currentHoveredIndex = null;
+        }
+      }
 
       // Decay interactive ripple strength smoothly to rest
       letterHoverStrength.current += (0.0 - letterHoverStrength.current) * 0.08;
