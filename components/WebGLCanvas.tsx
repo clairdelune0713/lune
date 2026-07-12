@@ -109,8 +109,9 @@ const bgFragmentShader = `
     // Grayscale conversion
     float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
 
-    // High-end dark monochrome tint (dark slate/warm grey tone)
-    vec3 mono = vec3(gray) * 0.95;
+    // High-end dark monochrome with subtle warm shift
+    // Keep it very dark so it reads as premium/luxury
+    vec3 mono = vec3(gray * 0.38, gray * 0.36, gray * 0.34);
 
     gl_FragColor = vec4(mono, uOpacity);
   }
@@ -236,7 +237,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     
     const bgUniforms = {
       uTexture: { value: bgTexture },
-      uOpacity: { value: activePage === 'home' ? 0.35 : 0.05 },
+      uOpacity: { value: activePage === 'home' ? 0.85 : 0.08 },
       uAspect: { value: aspect },
       uTextureAspect: { value: 1920 / 1080 }, // Aspect ratio of reliefBg image
     };
@@ -388,12 +389,12 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
         
         // Fade in central letter plane, dim background
         gsap.to(letterUniforms.uAlpha, { value: 1.0, duration: 1.0, ease: 'power2.out' });
-        gsap.to(bgUniforms.uOpacity, { value: 0.04, duration: 1.0, ease: 'power2.out' });
+        gsap.to(bgUniforms.uOpacity, { value: 0.08, duration: 1.0, ease: 'power2.out' });
       } else if (!prevWasHome && nextIsHome) {
         // 2. SUBPAGE TO HOME
         // Fade out central letter plane, brighten background
         gsap.to(letterUniforms.uAlpha, { value: 0.0, duration: 0.8, ease: 'power2.out' });
-        gsap.to(bgUniforms.uOpacity, { value: 0.35, duration: 1.0, ease: 'power2.out' });
+        gsap.to(bgUniforms.uOpacity, { value: 0.85, duration: 1.0, ease: 'power2.out' });
       } else if (!prevWasHome && !nextIsHome && currentActivePage !== nextPage) {
         // 3. SUBPAGE TO SUBPAGE (Liquid Morph)
         const currentTexture = numeralTextures[currentActivePage];

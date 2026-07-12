@@ -33,7 +33,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   // Custom trailing cursor states
   const cursorRef = useRef<HTMLDivElement>(null);
   const cursorFollowRef = useRef<HTMLDivElement>(null);
-  const [cursorText, setCursorText] = useState('');
+
   const [isCursorHovering, setIsCursorHovering] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
@@ -280,14 +280,8 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
           <div 
             ref={cursorFollowRef} 
             data-hovering={isCursorHovering}
-            className="fixed top-0 left-0 w-7 h-7 border border-[#bf9b30]/60 rounded-full pointer-events-none z-50 flex items-center justify-center transition-all duration-300"
-          >
-            {cursorText && (
-              <span className="absolute left-9 top-2 font-mono text-[7px] tracking-[0.2em] text-[#bf9b30] uppercase whitespace-nowrap bg-black/90 px-2 py-0.5 rounded border border-white/5 shadow-xl">
-                {cursorText}
-              </span>
-            )}
-          </div>
+            className="fixed top-0 left-0 w-7 h-7 border border-[#bf9b30]/60 rounded-full pointer-events-none z-50 transition-all duration-300"
+          />
         </>
       )}
 
@@ -300,7 +294,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
+            className="relative w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
           >
 
             {/* TOP BAR */}
