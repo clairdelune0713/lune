@@ -632,7 +632,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex justify-between items-center text-[10px] text-white/40">
-                  <span className="font-mono">REPLICATING IMMERSIVE GARDEN CRAFT</span>
+                  <span className="font-mono">AIFX CRAFT</span>
                   <button 
                     onClick={() => {
                       setIsProjectsOpen(false);
