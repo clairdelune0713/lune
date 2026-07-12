@@ -414,7 +414,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
+            className="relative w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
           >
             {/* BACK BUTTON (Top Center - Image 2) */}
             <div className="relative w-full flex justify-between items-center z-10">
@@ -452,26 +452,16 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               </button>
             </div>
 
-            {/* CENTRAL VIEWPORT SPACER FOR THE PERSISTENT WEBGL LETTER */}
-            <div 
-              className="relative flex flex-col items-center justify-center my-auto z-10 py-8 pointer-events-auto"
-              onMouseEnter={() => {
-                setCursorText("RIPPLE");
-                setIsCursorHovering(true);
-              }}
-              onMouseLeave={() => {
-                setCursorText("");
-                setIsCursorHovering(false);
-              }}
-            >
-              <div className="h-[48vh] sm:h-[55vh] max-h-[460px] aspect-[3/4]" />
+            {/* CENTRAL VIEWPORT SPACER FOR THE PERSISTENT WEBGL ROMAN NUMERAL */}
+            <div className="relative flex flex-col items-center justify-center my-auto z-10 py-6 pointer-events-none">
+              <div className="h-[40vh] sm:h-[48vh] max-h-[420px] aspect-square" />
             </div>
 
             {/* TYPOGRAPHIC DESCRIPTION & CONTROLS BLOCK (Image 2) */}
-            <div className="relative w-full grid grid-cols-1 md:grid-cols-12 items-end gap-6 z-10">
+            <div className="relative w-full grid grid-cols-1 md:grid-cols-12 items-end gap-6 z-10 pb-2">
               
               {/* Bottom-Left Column: Title & Paragraph (Image 2 layout) */}
-              <div className="md:col-span-6 flex flex-col text-left space-y-4 max-w-sm sm:max-w-xl">
+              <div className="md:col-span-6 flex flex-col text-left space-y-3 max-w-sm sm:max-w-xl">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activePage}
@@ -480,27 +470,12 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                     exit={{ opacity: 0, x: 15 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <h2 className="font-serif text-[32px] md:text-[2.8vw] font-normal leading-none text-white mb-4">
+                    <h2 className="font-serif text-[30px] md:text-[2.6vw] font-normal leading-none text-white mb-3">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].title}
                     </h2>
-                    <p className="font-serif text-[18px] md:text-[1.65vw] text-white/60 leading-relaxed font-light mb-6">
+                    <p className="font-serif text-[17px] md:text-[1.55vw] text-white/60 leading-relaxed font-light">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].description}
                     </p>
-                    
-                    {/* Details list columns */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-5 border-t border-white/10">
-                      {pageDetails[activePage as Exclude<PageType, 'home'>].detailsList.map((detail, idx) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex items-center gap-1.5 font-mono text-[8px] tracking-[0.2em] text-[#bf9b30] uppercase">
-                            {detail.icon}
-                            <span>{detail.title}</span>
-                          </div>
-                          <p className="font-sans text-[11px] text-white/50 leading-normal font-light">
-                            {detail.desc}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
