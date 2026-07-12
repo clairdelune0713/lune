@@ -326,7 +326,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
 
               {/* Circular minimalist spinning outline ring (Bottom Right - Image 1) */}
               <div className="flex items-center gap-3">
-                <span className="font-mono text-[7px] text-white/20 tracking-widest uppercase hidden md:inline">CRAFT EST. 2011</span>
+                <span className="font-mono text-[7px] text-white/20 tracking-widest uppercase hidden md:inline">EST. 2026</span>
                 <div className="w-5 h-5 border border-white/10 border-t-[#bf9b30] rounded-full animate-spin" />
               </div>
 
