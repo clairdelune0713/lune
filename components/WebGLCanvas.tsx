@@ -25,19 +25,22 @@ const vertexShader = `
   }
 `;
 
-// Fragment Shader for Liquid Transition & Base Water Reflection
+// Fragment Shader for Liquid Transition, Mouse Hover Ripples & Base Water Reflection
 const fragmentShader = `
   uniform sampler2D uTexture1;
   uniform sampler2D uTexture2;
   uniform float uProgress;
   uniform float uTime;
+  uniform float uWaterLine;
+  uniform vec2 uMouse;
+  uniform float uMouseStrength;
   uniform float uAlpha;
   varying vec2 vUv;
 
   void main() {
     vec2 uv = vUv;
 
-    float waterLine = 0.28;
+    float waterLine = uWaterLine;
     bool isReflection = uv.y < waterLine;
 
     if (isReflection) {
@@ -58,9 +61,17 @@ const fragmentShader = `
       float fade = smoothstep(0.0, waterLine, uv.y);
 
       vec4 waterTint = vec4(0.02, 0.02, 0.015, 1.0);
-      gl_FragColor = mix(waterTint, baseColor, fade * 0.4) * uAlpha;
+      gl_FragColor = mix(waterTint, baseColor, fade * 0.45) * uAlpha;
     } else {
-      // MAIN LETTER REGION - Liquid distortion during transitions
+      // MAIN LETTER REGION - Mouse ripple hover effect
+      float dist = distance(uv, uMouse);
+      if (dist < 0.20) {
+        float rippleStrength = (1.0 - dist / 0.20) * uMouseStrength * 0.015;
+        float rippleAngle = sin(dist * 40.0 - uTime * 4.0);
+        uv += normalize(uv - uMouse) * rippleAngle * rippleStrength;
+      }
+
+      // Liquid distortion during transitions
       float distortionScale = sin(uProgress * 3.14159265);
       float warpX = sin(uv.y * 10.0 + uTime) * 0.04 * distortionScale;
       float warpY = cos(uv.x * 10.0 + uTime) * 0.04 * distortionScale;
@@ -135,9 +146,23 @@ const floralImageMap: Record<string, typeof floralI> = {
   'clients': floralV,
 };
 
+// Map water reflection levels to match exact letter bottom edges
+const waterLineMap: Record<string, number> = {
+  'the-studio': 0.08,
+  'our-approach': 0.10,
+  'services': 0.10,
+  'awards': 0.16,
+  'clients': 0.09,
+};
+
 export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const activePageRef = useRef<string>(activePage);
+
+  // Interaction tracking state refs (avoids direct dependency re-initializations)
+  const mouse = useRef(new THREE.Vector2(0, 0));
+  const targetMouse = useRef(new THREE.Vector2(0, 0));
+  const letterHoverStrength = useRef(0);
 
   useEffect(() => {
     activePageRef.current = activePage;
@@ -205,11 +230,18 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     
     const letterGeometry = new THREE.PlaneGeometry(2.8, 2.8);
     
+    const initialWaterLine = activePage === 'home'
+      ? waterLineMap['the-studio']
+      : (waterLineMap[activePage] || 0.08);
+
     const letterUniforms = {
       uTexture1: { value: initialTexture },
       uTexture2: { value: initialTexture },
       uProgress: { value: 0 },
       uTime: { value: 0 },
+      uWaterLine: { value: initialWaterLine },
+      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+      uMouseStrength: { value: 0 },
       uAlpha: { value: activePage === 'home' ? 0 : 1 },
     };
 
@@ -254,7 +286,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     const particles = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particles);
 
-    // --- 6. RESIZE HANDLER ---
+    // --- 6. EVENT HANDLERS (Resize & Mouse Interactions) ---
     const handleResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -278,6 +310,34 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       }
     };
     window.addEventListener('resize', handleResize);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // 1. Normalized tracking coordinates [-1, 1] for 3D camera/mesh parallax
+      targetMouse.current.x = (e.clientX / w) * 2 - 1;
+      targetMouse.current.y = -(e.clientY / h) * 2 + 1;
+
+      // 2. High-precision UV mapping on the centered square central letter plane
+      const scale = w < 768 ? 0.75 : 1.1;
+      const meshSize = 0.7 * scale * h; // Height and width of orthographic mesh in pixels
+      const left = w / 2 - meshSize / 2;
+      const top = h / 2 - meshSize / 2;
+
+      const relativeX = e.clientX - left;
+      const relativeY = h - e.clientY - top; // GLSL Y-axis starts from the bottom
+
+      letterUniforms.uMouse.value.set(
+        relativeX / meshSize,
+        relativeY / meshSize
+      );
+
+      // Trigger interactive ripple strength to 100% (decays in loop)
+      letterHoverStrength.current = 1.0;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
     handleResize();
 
     // --- 7. ANIMATION LOOP ---
@@ -289,6 +349,21 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
 
       const elapsedTime = clock.getElapsedTime();
       letterUniforms.uTime.value = elapsedTime;
+
+      // Decay interactive ripple strength smoothly to rest
+      letterHoverStrength.current += (0.0 - letterHoverStrength.current) * 0.08;
+      letterUniforms.uMouseStrength.value = letterHoverStrength.current;
+
+      // Smoothly interpolate mouse coordinates for organic parallax lag
+      mouse.current.x += (targetMouse.current.x - mouse.current.x) * 0.05;
+      mouse.current.y += (targetMouse.current.y - mouse.current.y) * 0.05;
+
+      // Parallax Shifts (subtle opposite directions create beautiful 3D physical depth layer separation)
+      bgMesh.position.x = mouse.current.x * 0.15;
+      bgMesh.position.y = mouse.current.y * 0.15;
+
+      letterMesh.position.x = -mouse.current.x * 0.04;
+      letterMesh.position.y = -mouse.current.y * 0.04;
 
       // Animate firefly particles
       const positionsAttr = particlesGeometry.attributes.position as THREE.BufferAttribute;
@@ -321,11 +396,14 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
         ? floralTextures['the-studio']
         : floralTextures[nextPage];
       
+      const nextWaterLine = waterLineMap[nextPage === 'home' ? 'the-studio' : nextPage] || 0.08;
+      
       if (prevWasHome && !nextIsHome) {
         // HOME → SUBPAGE
         letterUniforms.uTexture1.value = nextTexture;
         letterUniforms.uTexture2.value = nextTexture;
         letterUniforms.uProgress.value = 0;
+        letterUniforms.uWaterLine.value = nextWaterLine;
         
         gsap.to(letterUniforms.uAlpha, { value: 1.0, duration: 1.0, ease: 'power2.out' });
         gsap.to(bgUniforms.uOpacity, { value: 0.08, duration: 1.0, ease: 'power2.out' });
@@ -334,13 +412,14 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
         gsap.to(letterUniforms.uAlpha, { value: 0.0, duration: 0.8, ease: 'power2.out' });
         gsap.to(bgUniforms.uOpacity, { value: 0.85, duration: 1.0, ease: 'power2.out' });
       } else if (!prevWasHome && !nextIsHome && currentActivePage !== nextPage) {
-        // SUBPAGE → SUBPAGE (Liquid Morph)
+        // SUBPAGE → SUBPAGE (Liquid Morph & Waterline Slide)
         const currentTexture = floralTextures[currentActivePage];
         
         letterUniforms.uTexture1.value = currentTexture;
         letterUniforms.uTexture2.value = nextTexture;
         letterUniforms.uProgress.value = 0;
 
+        // Animate shader progress (morph warp)
         gsap.to(letterUniforms.uProgress, {
           value: 1.0,
           duration: 1.3,
@@ -349,6 +428,13 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
             letterUniforms.uTexture1.value = nextTexture;
             letterUniforms.uProgress.value = 0;
           }
+        });
+
+        // Smoothly slide the waterline to match the incoming numeral height
+        gsap.to(letterUniforms.uWaterLine, {
+          value: nextWaterLine,
+          duration: 1.3,
+          ease: 'power3.inOut'
         });
       }
 
@@ -365,6 +451,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationFrameId);
 
       if (currentMount && renderer.domElement) {
