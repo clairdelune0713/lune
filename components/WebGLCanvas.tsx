@@ -4,8 +4,13 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 
-// Import our background relief asset
+// Import assets
 import reliefBg from '@/src/assets/images/garden_relief_bg_1783827131534.jpg';
+import floralI from '@/src/assets/images/floral_I.png';
+import floralII from '@/src/assets/images/floral_II.png';
+import floralIII from '@/src/assets/images/floral_III.png';
+import floralIV from '@/src/assets/images/floral_IV.png';
+import floralV from '@/src/assets/images/floral_V.png';
 
 interface WebGLCanvasProps {
   activePage: string;
@@ -20,7 +25,7 @@ const vertexShader = `
   }
 `;
 
-// Custom Fragment Shader for Liquid Transition & Base Water Reflection (No mouse interactions)
+// Fragment Shader for Liquid Transition & Base Water Reflection
 const fragmentShader = `
   uniform sampler2D uTexture1;
   uniform sampler2D uTexture2;
@@ -32,39 +37,30 @@ const fragmentShader = `
   void main() {
     vec2 uv = vUv;
 
-    // Define reflection water line (approx bottom 32% of canvas)
-    float waterLine = 0.32;
+    float waterLine = 0.28;
     bool isReflection = uv.y < waterLine;
 
     if (isReflection) {
-      // 1. WATER REFLECTION REGION
-      // Calculate continuous ripple wave offsets based on time and position
+      // WATER REFLECTION REGION
       float wave = sin(uv.x * 28.0 + uTime * 3.0) * 0.009 + cos(uv.x * 14.0 - uTime * 2.1) * 0.006;
       
-      // Calculate flipped UV for reflection, stretching it slightly vertically
       vec2 reflectedUv = vec2(
         uv.x + wave,
         waterLine + (waterLine - uv.y) * 1.4
       );
 
-      // Boundary clamp
       reflectedUv = clamp(reflectedUv, vec2(0.001), vec2(0.999));
 
-      // Sample textures
       vec4 col1 = texture2D(uTexture1, reflectedUv);
       vec4 col2 = texture2D(uTexture2, reflectedUv);
       vec4 baseColor = mix(col1, col2, uProgress);
 
-      // Water reflection fades as it goes downwards (approaching y = 0.0)
       float fade = smoothstep(0.0, waterLine, uv.y);
 
-      // Add a luxurious darker water-wash tint (near black/dark gold overlay)
       vec4 waterTint = vec4(0.02, 0.02, 0.015, 1.0);
-      gl_FragColor = mix(waterTint, baseColor, fade * 0.45) * uAlpha;
+      gl_FragColor = mix(waterTint, baseColor, fade * 0.4) * uAlpha;
     } else {
-      // 2. MAIN LETTER REGION
-      // Transition Warp (liquid distortion)
-      // Transition is maximum at progress = 0.5
+      // MAIN LETTER REGION - Liquid distortion during transitions
       float distortionScale = sin(uProgress * 3.14159265);
       float warpX = sin(uv.y * 10.0 + uTime) * 0.04 * distortionScale;
       float warpY = cos(uv.x * 10.0 + uTime) * 0.04 * distortionScale;
@@ -72,7 +68,6 @@ const fragmentShader = `
       vec2 uv1 = uv + vec2(warpX, warpY) * (1.0 - uProgress);
       vec2 uv2 = uv - vec2(warpY, warpX) * uProgress;
 
-      // Keep within bounds
       uv1 = clamp(uv1, vec2(0.001), vec2(0.999));
       uv2 = clamp(uv2, vec2(0.001), vec2(0.999));
 
@@ -84,7 +79,7 @@ const fragmentShader = `
   }
 `;
 
-// Custom Fragment Shader for Background Bas-Relief (Grayscale cover mapping)
+// Background Fragment Shader (Grayscale cover-fit)
 const bgFragmentShader = `
   uniform sampler2D uTexture;
   uniform float uOpacity;
@@ -95,7 +90,7 @@ const bgFragmentShader = `
   void main() {
     vec2 uv = vUv;
 
-    // Cover calculation: adjust UV coordinates to maintain aspect ratio
+    // Cover calculation
     if (uAspect > uTextureAspect) {
       float s = uTextureAspect / uAspect;
       uv.y = (uv.y - 0.5) * s + 0.5;
@@ -106,18 +101,15 @@ const bgFragmentShader = `
 
     vec4 color = texture2D(uTexture, uv);
     
-    // Grayscale conversion
+    // Grayscale with subtle warm shift for luxury feel
     float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-
-    // High-end dark monochrome with subtle warm shift
-    // Keep it very dark so it reads as premium/luxury
     vec3 mono = vec3(gray * 0.38, gray * 0.36, gray * 0.34);
 
     gl_FragColor = vec4(mono, uOpacity);
   }
 `;
 
-// Helper to generate a soft round glow texture for particles
+// Firefly particle texture
 function createParticleTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 16;
@@ -125,7 +117,7 @@ function createParticleTexture() {
   const ctx = canvas.getContext('2d');
   if (ctx) {
     const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-    gradient.addColorStop(0, 'rgba(163, 255, 18, 1)'); // Immersive Garden's #a3ff12 firefly color
+    gradient.addColorStop(0, 'rgba(163, 255, 18, 1)');
     gradient.addColorStop(0.3, 'rgba(163, 255, 18, 0.6)');
     gradient.addColorStop(1, 'rgba(163, 255, 18, 0)');
     ctx.fillStyle = gradient;
@@ -134,46 +126,14 @@ function createParticleTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-// Dynamic Texture Generator for Roman Numerals (Crisp vector rendering + beautiful glow)
-function createRomanNumeralTexture(numeral: string, fontFamily: string) {
-  const size = 1024;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, size, size);
-    
-    // Setup elegant typography
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    // Multi-pass glow: draw text multiple times with increasing blur for a rich bloom
-    const passes = [
-      { blur: 80, alpha: 0.3 },
-      { blur: 40, alpha: 0.5 },
-      { blur: 15, alpha: 0.8 },
-      { blur: 0,  alpha: 1.0 },
-    ];
-
-    // Scale font size based on numeral length so "III" fits
-    const fontSize = numeral.length <= 2 ? 420 : (numeral.length === 3 ? 340 : 280);
-    
-    for (const pass of passes) {
-      ctx.save();
-      ctx.shadowColor = `rgba(255, 255, 255, ${pass.alpha})`;
-      ctx.shadowBlur = pass.blur;
-      ctx.fillStyle = `rgba(255, 255, 255, ${pass.alpha})`;
-      ctx.font = `300 ${fontSize}px ${fontFamily}`;
-      ctx.fillText(numeral, size / 2, size * 0.42); // shift up to leave room for water reflection
-      ctx.restore();
-    }
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-  return texture;
-}
+// Map page slugs to imported floral images
+const floralImageMap: Record<string, typeof floralI> = {
+  'the-studio': floralI,
+  'our-approach': floralII,
+  'services': floralIII,
+  'awards': floralIV,
+  'clients': floralV,
+};
 
 export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -192,8 +152,6 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     const height = window.innerHeight;
 
     const scene = new THREE.Scene();
-    
-    // Orthographic Camera to keep everything flat and UI-like
     const aspect = width / height;
     const camera = new THREE.OrthographicCamera(-aspect * 2, aspect * 2, 2, -2, 0.1, 100);
     camera.position.z = 5;
@@ -209,56 +167,23 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     bgTexture.minFilter = THREE.LinearFilter;
     bgTexture.generateMipmaps = false;
 
-    // Resolve the actual font-family from CSS variable (Canvas 2D can't use var())
-    const resolvedFont = getComputedStyle(document.documentElement)
-      .getPropertyValue('--font-serif').trim() || '"Cormorant Garamond", serif';
-    const fontFamily = `${resolvedFont}, "Cormorant Garamond", "Times New Roman", serif`;
-
-    // Create Roman numeral textures dynamically
-    const numeralTextures: Record<string, THREE.Texture> = {
-      'the-studio': createRomanNumeralTexture('I', fontFamily),
-      'our-approach': createRomanNumeralTexture('II', fontFamily),
-      'services': createRomanNumeralTexture('III', fontFamily),
-      'awards': createRomanNumeralTexture('IV', fontFamily),
-      'clients': createRomanNumeralTexture('V', fontFamily),
-    };
-
-    // Redraw textures when google fonts are loaded to ensure correct font is applied
-    if (typeof document !== 'undefined' && 'fonts' in document) {
-      document.fonts.ready.then(() => {
-        const updatedFont = getComputedStyle(document.documentElement)
-          .getPropertyValue('--font-serif').trim() || '"Cormorant Garamond", serif';
-        const updatedFontFamily = `${updatedFont}, "Cormorant Garamond", "Times New Roman", serif`;
-
-        const pages = ['the-studio', 'our-approach', 'services', 'awards', 'clients'];
-        const numerals = ['I', 'II', 'III', 'IV', 'V'];
-        
-        pages.forEach((p, idx) => {
-          const oldTex = numeralTextures[p];
-          numeralTextures[p] = createRomanNumeralTexture(numerals[idx], updatedFontFamily);
-          
-          // If the old texture is currently loaded in uniforms, update it immediately
-          if (letterUniforms.uTexture1.value === oldTex) {
-            letterUniforms.uTexture1.value = numeralTextures[p];
-          }
-          if (letterUniforms.uTexture2.value === oldTex) {
-            letterUniforms.uTexture2.value = numeralTextures[p];
-          }
-          
-          oldTex.dispose();
-        });
-      });
-    }
+    // Load floral Roman numeral textures from generated images
+    const floralTextures: Record<string, THREE.Texture> = {};
+    Object.entries(floralImageMap).forEach(([key, img]) => {
+      const tex = textureLoader.load(img.src);
+      tex.minFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+      floralTextures[key] = tex;
+    });
 
     // --- 3. BACKGROUND BAS-RELIEF COVER PLANE ---
-    // Start with 5x5 plane, scaled dynamically in handleResize
     const bgGeometry = new THREE.PlaneGeometry(5, 5);
     
     const bgUniforms = {
       uTexture: { value: bgTexture },
       uOpacity: { value: activePage === 'home' ? 0.85 : 0.08 },
       uAspect: { value: aspect },
-      uTextureAspect: { value: 1920 / 1080 }, // Aspect ratio of reliefBg image
+      uTextureAspect: { value: 1920 / 1080 },
     };
 
     const bgMaterial = new THREE.ShaderMaterial({
@@ -274,8 +199,11 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     scene.add(bgMesh);
 
     // --- 4. CENTRAL LETTER PLANE & LIQUID SHADER ---
-    const initialTexture = activePage === 'home' ? numeralTextures['the-studio'] : numeralTextures[activePage];
-    const letterGeometry = new THREE.PlaneGeometry(2.4, 2.4); // Square plane so Roman numerals don't get warped
+    const initialTexture = activePage === 'home'
+      ? floralTextures['the-studio']
+      : floralTextures[activePage];
+    
+    const letterGeometry = new THREE.PlaneGeometry(2.8, 2.8);
     
     const letterUniforms = {
       uTexture1: { value: initialTexture },
@@ -307,7 +235,6 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       positions[i * 3] = (Math.random() - 0.5) * aspect * 4;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 4;
       positions[i * 3 + 2] = (Math.random() - 0.5) * 2;
-
       particleSpeeds[i] = 0.005 + Math.random() * 0.008;
       particleOffsets[i] = Math.random() * 100;
     }
@@ -327,7 +254,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     const particles = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particles);
 
-    // --- 6. RESIZE EVENT HANDLER (Full Canvas / Cover) ---
+    // --- 6. RESIZE HANDLER ---
     const handleResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -340,22 +267,17 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       camera.bottom = -2;
       camera.updateProjectionMatrix();
 
-      // Pass new aspect ratios to background shader for perfect cover fitting
       bgUniforms.uAspect.value = newAspect;
-
-      // Scale background mesh to fill frustum exactly
       bgMesh.scale.set((newAspect * 4.0) / 5.0, 4.0 / 5.0, 1);
 
-      // Scale central letter geometry to show completely on all viewports without cropping
+      // Scale letter to show fully on all viewports
       if (w < 768) {
-        letterMesh.scale.setScalar(0.70); // slightly smaller on mobile to guarantee fits
+        letterMesh.scale.setScalar(0.75);
       } else {
-        letterMesh.scale.setScalar(1.05); // full size on desktop
+        letterMesh.scale.setScalar(1.1);
       }
     };
     window.addEventListener('resize', handleResize);
-
-    // Initial resize trigger to calibrate aspect ratio & positioning
     handleResize();
 
     // --- 7. ANIMATION LOOP ---
@@ -375,9 +297,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       
       for (let i = 0; i < particleCount; i++) {
         array[i * 3 + 1] += particleSpeeds[i];
-        
-        const offset = particleOffsets[i];
-        array[i * 3] += Math.sin(elapsedTime * 0.5 + offset) * 0.002;
+        array[i * 3] += Math.sin(elapsedTime * 0.5 + particleOffsets[i]) * 0.002;
 
         if (array[i * 3 + 1] > 2.5) {
           array[i * 3 + 1] = -2.5;
@@ -390,39 +310,37 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
     };
     animate();
 
-    // --- 8. DEFINE TRANSITIONS ---
+    // --- 8. TRANSITIONS ---
     let currentActivePage = activePage;
 
     const transitionTo = (nextPage: string) => {
       const prevWasHome = currentActivePage === 'home';
       const nextIsHome = nextPage === 'home';
 
-      // Capture active textures
-      const nextTexture = nextPage === 'home' ? numeralTextures['the-studio'] : numeralTextures[nextPage];
+      const nextTexture = nextPage === 'home'
+        ? floralTextures['the-studio']
+        : floralTextures[nextPage];
       
       if (prevWasHome && !nextIsHome) {
-        // 1. HOME TO SUBPAGE
+        // HOME → SUBPAGE
         letterUniforms.uTexture1.value = nextTexture;
         letterUniforms.uTexture2.value = nextTexture;
         letterUniforms.uProgress.value = 0;
         
-        // Fade in central letter plane, dim background
         gsap.to(letterUniforms.uAlpha, { value: 1.0, duration: 1.0, ease: 'power2.out' });
         gsap.to(bgUniforms.uOpacity, { value: 0.08, duration: 1.0, ease: 'power2.out' });
       } else if (!prevWasHome && nextIsHome) {
-        // 2. SUBPAGE TO HOME
-        // Fade out central letter plane, brighten background
+        // SUBPAGE → HOME
         gsap.to(letterUniforms.uAlpha, { value: 0.0, duration: 0.8, ease: 'power2.out' });
         gsap.to(bgUniforms.uOpacity, { value: 0.85, duration: 1.0, ease: 'power2.out' });
       } else if (!prevWasHome && !nextIsHome && currentActivePage !== nextPage) {
-        // 3. SUBPAGE TO SUBPAGE (Liquid Morph)
-        const currentTexture = numeralTextures[currentActivePage];
+        // SUBPAGE → SUBPAGE (Liquid Morph)
+        const currentTexture = floralTextures[currentActivePage];
         
         letterUniforms.uTexture1.value = currentTexture;
         letterUniforms.uTexture2.value = nextTexture;
         letterUniforms.uProgress.value = 0;
 
-        // Animate shader progress uniform to transition liquid distortion
         gsap.to(letterUniforms.uProgress, {
           value: 1.0,
           duration: 1.3,
@@ -437,7 +355,6 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       currentActivePage = nextPage;
     };
 
-    // React to prop changes using a custom event listener approach or direct reference
     const intervalId = setInterval(() => {
       if (activePageRef.current !== currentActivePage) {
         transitionTo(activePageRef.current);
@@ -454,7 +371,6 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
         currentMount.removeChild(renderer.domElement);
       }
 
-      // Dispose resources
       renderer.dispose();
       bgGeometry.dispose();
       bgMaterial.dispose();
@@ -464,7 +380,7 @@ export default function WebGLCanvas({ activePage }: WebGLCanvasProps) {
       particlesMaterial.dispose();
 
       bgTexture.dispose();
-      Object.values(numeralTextures).forEach((tex) => tex.dispose());
+      Object.values(floralTextures).forEach((tex) => tex.dispose());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
