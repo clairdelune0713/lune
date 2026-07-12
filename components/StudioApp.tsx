@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowRight, 
@@ -29,6 +29,9 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   const [activePage, setActivePage] = useState<PageType>('home');
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
+  const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev' | 'enter'>('enter');
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+  const touchStartY = useRef<number | null>(null);
 
   // Hover state for center links on the landing menu
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -79,11 +82,63 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   }, []);
 
   // Update URL path and page state smoothly
-  const navigateTo = (page: PageType) => {
+  const navigateTo = (page: PageType, direction: 'next' | 'prev' | 'enter' = 'enter') => {
+    if (page === activePage && direction !== 'enter') {
+      return;
+    }
+
+    setTransitionDirection(direction);
     setActivePage(page);
+    setIsPageTransitioning(true);
+
     const path = page === 'home' ? '/' : page === 'the-studio' ? '/the-studio' : `/${page}`;
     window.history.pushState(null, '', path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (!isPageTransitioning) return;
+
+    const timeoutId = window.setTimeout(() => setIsPageTransitioning(false), 750);
+    return () => window.clearTimeout(timeoutId);
+  }, [isPageTransitioning]);
+
+  const handleWheelNavigation = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (activePage === 'home' || isPageTransitioning) return;
+
+    const delta = event.deltaY;
+    if (Math.abs(delta) < 30) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (delta > 0) {
+      navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage, 'next');
+    } else {
+      navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].prevPage, 'prev');
+    }
+  };
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (activePage === 'home' || isPageTransitioning || touchStartY.current === null) return;
+
+    const touchEndY = event.changedTouches[0]?.clientY ?? null;
+    if (touchEndY === null) return;
+
+    const deltaY = touchStartY.current - touchEndY;
+    if (Math.abs(deltaY) < 70) return;
+
+    if (deltaY > 0) {
+      navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage, 'next');
+    } else {
+      navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].prevPage, 'prev');
+    }
+
+    touchStartY.current = null;
   };
 
   // Keyboard navigation for an extremely immersive experience
@@ -99,28 +154,28 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
 
       if (e.key === 'Escape') {
         if (activePage !== 'home') {
-          navigateTo('home');
+          navigateTo('home', 'prev');
         }
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         // Go to next subpage
         const pages: PageType[] = ['the-studio', 'our-approach', 'services', 'awards', 'clients'];
         const currentIdx = pages.indexOf(activePage);
         if (currentIdx === -1) {
-          navigateTo('the-studio');
+          navigateTo('the-studio', 'next');
         } else {
           const nextIdx = (currentIdx + 1) % pages.length;
-          navigateTo(pages[nextIdx]);
+          navigateTo(pages[nextIdx], 'next');
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         // Go to prev subpage or back to menu
         const pages: PageType[] = ['the-studio', 'our-approach', 'services', 'awards', 'clients'];
         const currentIdx = pages.indexOf(activePage);
         if (currentIdx === -1) {
-          navigateTo('home');
+          navigateTo('home', 'prev');
         } else if (currentIdx === 0) {
-          navigateTo('home');
+          navigateTo('home', 'prev');
         } else {
-          navigateTo(pages[currentIdx - 1]);
+          navigateTo(pages[currentIdx - 1], 'prev');
         }
       }
     };
@@ -218,6 +273,24 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     { name: 'VALENTINO ACCENT', sector: 'Rome / Luxury Perfume', project: 'Scent-guided emotional digital gallery & artwork', year: '2025' }
   ];
 
+  const subpageTransition = transitionDirection === 'prev'
+    ? {
+        initial: { opacity: 0, y: -28, scale: 0.985 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: 28, scale: 0.985 },
+      }
+    : transitionDirection === 'next'
+    ? {
+        initial: { opacity: 0, y: 28, scale: 0.985 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, y: -28, scale: 0.985 },
+      }
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+      };
+
   return (
     <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none">
       
@@ -253,7 +326,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
 
               {/* Close Button (Image 1 top right) */}
               <button 
-                onClick={() => navigateTo('the-studio')}
+                onClick={() => navigateTo('the-studio', 'next')}
                 className="flex items-center gap-2 group cursor-pointer transition-all duration-300"
 
               >
@@ -276,7 +349,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                     className="group"
                   >
                     <button
-                      onClick={() => navigateTo(item.id as PageType)}
+                      onClick={() => navigateTo(item.id as PageType, 'next')}
                       onMouseEnter={() => setHoveredIndex(idx)}
                       onMouseLeave={() => setHoveredIndex(null)}
                       className={`font-serif text-lg sm:text-2xl md:text-3xl lg:text-[2.2rem] font-light tracking-[0.25em] hover:tracking-[0.38em] uppercase transition-all duration-700 cursor-pointer flex items-center justify-center gap-3 sm:gap-4 mx-auto py-2 outline-none ${
@@ -337,19 +410,22 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
           
           /* SUBPAGE DETAIL VIEW (Image 2) */
           <motion.div 
-            key="sub-page"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            key={activePage}
+            initial={subpageTransition.initial}
+            animate={subpageTransition.animate}
+            exit={subpageTransition.exit}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="relative w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
+            onWheel={handleWheelNavigation}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             {/* BACK BUTTON (Top Center - Image 2) */}
             <div className="relative w-full flex justify-between items-center z-10">
               {/* Minimal brand logo back link */}
               <div 
                 className="flex items-center gap-2 cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
-                onClick={() => navigateTo('home')}
+                onClick={() => navigateTo('home', 'prev')}
 
               >
                 <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center font-serif text-[10px] text-white">G</div>
@@ -358,7 +434,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               {/* Back center button */}
               <div className="absolute left-1/2 -translate-x-1/2">
                 <button 
-                  onClick={() => navigateTo('home')}
+                  onClick={() => navigateTo('home', 'prev')}
                   className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
 
                 >
@@ -412,7 +488,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div className="md:col-span-3 flex justify-start md:justify-center py-4 md:py-0">
                 <div className="flex items-center gap-6 sm:gap-8 font-mono text-[9px] tracking-[0.25em] uppercase text-white/40 select-none">
                   <button 
-                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].prevPage)}
+                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].prevPage, 'prev')}
                     className="group hover:text-white transition-colors cursor-pointer relative pb-1 flex items-center gap-1.5"
                   >
                     <span className="inline-block transform group-hover:-translate-x-0.5 transition-transform duration-300">←</span>
@@ -421,7 +497,7 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                   </button>
                   <span className="text-[#bf9b30]/35 font-light">|</span>
                   <button 
-                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage)}
+                    onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage, 'next')}
                     className="group hover:text-white transition-colors cursor-pointer relative pb-1 flex items-center gap-1.5"
                   >
                     <span>Next</span>
