@@ -1,0 +1,6 @@
+{
+  "name": "Immersive Garden - The Studio",
+  "description": "An identical, highly polished and immersive digital production studio experience, replicating Immersive Garden's award-winning design, elegant typography, fluid motion, and smooth animations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
