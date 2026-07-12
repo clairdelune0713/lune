@@ -558,15 +558,15 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                 <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 text-center text-[9px]">
                   <div className="space-y-0.5">
                     <Mail className="w-3 h-3 text-[#bf9b30]/60 mx-auto" />
-                    <span className="font-mono text-white/40 block">studio@immersive-g.com</span>
+                    <span className="font-mono text-white/40 block">onecoolaifxdev@gmail.com</span>
                   </div>
                   <div className="space-y-0.5">
                     <Phone className="w-3 h-3 text-[#bf9b30]/60 mx-auto" />
-                    <span className="font-mono text-white/40 block">+33 (0) 1 42 78 90</span>
+                    <span className="font-mono text-white/40 block">+81 90 1234 5678</span>
                   </div>
                   <div className="space-y-0.5">
                     <MapPin className="w-3 h-3 text-[#bf9b30]/60 mx-auto" />
-                    <span className="font-mono text-white/40 block">Paris, France</span>
+                    <span className="font-mono text-white/40 block">Kyoto, Japan</span>
                   </div>
                 </div>
 
