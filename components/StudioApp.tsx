@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowRight, 
@@ -16,34 +16,9 @@ import {
   Award,
   Users
 } from 'lucide-react';
-
-// Import our beautiful custom-generated assets
-import reliefBg from '@/src/assets/images/garden_relief_bg_1783827131534.jpg';
-import letterIFloral from '@/src/assets/images/letter_i_floral_1783827154536.jpg';
-import letterAFloral from '@/src/assets/images/letter_a_floral_1783827168960.jpg';
-import letterSFloral from '@/src/assets/images/letter_s_floral_1783827183707.jpg';
-import letterWFloral from '@/src/assets/images/letter_w_floral_1783827197103.jpg';
-import letterCFloral from '@/src/assets/images/letter_c_floral_1783827209498.jpg';
+import WebGLCanvas from './WebGLCanvas';
 
 type PageType = 'home' | 'the-studio' | 'our-approach' | 'services' | 'awards' | 'clients';
-
-// Pre-defined static coordinates to keep the render 100% pure and lint-clean without Math.random()
-const FIREFLIES_DATA = [
-  { left: '15%', top: '25%', duration: 25, delay: -2 },
-  { left: '45%', top: '75%', duration: 35, delay: -5 },
-  { left: '85%', top: '15%', duration: 22, delay: -12 },
-  { left: '30%', top: '85%', duration: 28, delay: -8 },
-  { left: '70%', top: '65%', duration: 32, delay: -14 },
-  { left: '10%', top: '55%', duration: 27, delay: -4 },
-  { left: '90%', top: '45%', duration: 40, delay: -20 },
-  { left: '50%', top: '35%', duration: 24, delay: -1 },
-  { left: '60%', top: '80%', duration: 31, delay: -9 },
-  { left: '20%', top: '90%', duration: 29, delay: -17 },
-  { left: '80%', top: '70%', duration: 33, delay: -3 },
-  { left: '35%', top: '10%', duration: 38, delay: -11 },
-  { left: '75%', top: '30%', duration: 23, delay: -15 },
-  { left: '55%', top: '95%', duration: 30, delay: -7 },
-];
 
 
 interface StudioAppProps {
@@ -55,12 +30,64 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   
+  // Custom trailing cursor states
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const cursorFollowRef = useRef<HTMLDivElement>(null);
+  const [cursorText, setCursorText] = useState('');
+  const [isCursorHovering, setIsCursorHovering] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
   // Hover state for center links on the landing menu
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Form states for luxury contact modal
   const [contactForm, setContactForm] = useState({ name: '', email: '', company: '', message: '' });
   const [formSubmitted, setFormSubmitted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
+  useEffect(() => {
+    if (isTouchDevice) return;
+
+    const cursor = cursorRef.current;
+    const follower = cursorFollowRef.current;
+    if (!cursor || !follower) return;
+
+    let mouseX = 0;
+    let mouseY = 0;
+    let followerX = 0;
+    let followerY = 0;
+
+    const onMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      
+      cursor.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+    };
+
+    const updateFollower = () => {
+      followerX += (mouseX - followerX) * 0.14;
+      followerY += (mouseY - followerY) * 0.14;
+      
+      const isHovering = follower.getAttribute('data-hovering') === 'true';
+      const scaleVal = isHovering ? 1.6 : 1.0;
+      
+      follower.style.transform = `translate3d(${followerX}px, ${followerY}px, 0) translate(-50%, -50%) scale(${scaleVal})`;
+      
+      requestAnimationFrame(updateFollower);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    const animId = requestAnimationFrame(updateFollower);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(animId);
+    };
+  }, [isTouchDevice]);
 
   // Parse path to set initial page
   useEffect(() => {
@@ -179,14 +206,12 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   const pageDetails: Record<Exclude<PageType, 'home'>, { 
     title: string; 
     description: string; 
-    letterImg: { src: string };
     nextPage: PageType;
     detailsList: Array<{ title: string; desc: string; icon?: React.ReactNode }>;
   }> = {
     'the-studio': {
       title: 'The studio',
       description: 'For over 10 years, creating exceptional and unprecedented products and experiences has been our passion, driven by innovative thinking and highly precise execution.',
-      letterImg: letterIFloral,
       nextPage: 'our-approach',
       detailsList: [
         { title: 'OUR FOUNDATION', desc: 'Established in Paris, we partner with world-renowned luxury houses to translate their heritage into physical-like digital sculptures.', icon: <Sparkles className="w-4 h-4 text-[#bf9b30]" /> },
@@ -196,7 +221,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     'our-approach': {
       title: 'Our approach',
       description: 'We merge artistic design with clean front-end engineering. Our phased strategy balances bold concepts, refined art direction, and meticulous performance standards.',
-      letterImg: letterAFloral,
       nextPage: 'services',
       detailsList: [
         { title: 'ART DIRECTION', desc: 'Formulating a unique visual signature. Designing custom luxury typography pairings and precise motion theories.', icon: <Sparkles className="w-4 h-4 text-[#bf9b30]" /> },
@@ -206,7 +230,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     'services': {
       title: 'Services',
       description: 'From high-end art direction and branding to custom interactive development, our capabilities are focused on creating unforgettable digital spaces.',
-      letterImg: letterSFloral,
       nextPage: 'awards',
       detailsList: [
         { title: 'UX & ART DIRECTION', desc: 'Bespoke branding and visual layout design focused on storytelling and emotional user journeys.', icon: <Compass className="w-4 h-4 text-[#bf9b30]" /> },
@@ -216,7 +239,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     'awards': {
       title: 'Awards',
       description: 'Our dedication to digital craft, premium typography, and fluid movement has been recognized globally with multiple Site of the Year and Agency of the Year honors.',
-      letterImg: letterWFloral,
       nextPage: 'clients',
       detailsList: [
         { title: 'AWWWARDS SOTY', desc: 'Winner of site of the year for groundbreaking aesthetic execution and layout fluidity.', icon: <Award className="w-4 h-4 text-[#bf9b30]" /> },
@@ -226,7 +248,6 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
     'clients': {
       title: 'Clients',
       description: 'We collaborate with prestigious luxury houses, visionary creators, and forward-thinking enterprises, translating their heritage into outstanding interactive monuments.',
-      letterImg: letterCFloral,
       nextPage: 'the-studio',
       detailsList: [
         { title: 'LUXURY BRANDING', desc: 'Partnering with Hermès, Chanel, and Cartier to draft high-end promotional portals.', icon: <Users className="w-4 h-4 text-[#bf9b30]" /> },
@@ -244,8 +265,32 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
   ];
 
   return (
-    <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none">
+    <div className="relative min-h-screen bg-black overflow-x-hidden selection:bg-[#bf9b30]/30 selection:text-white text-white select-none cursor-none">
       
+      {/* Persistent WebGL Context */}
+      <WebGLCanvas activePage={activePage} />
+
+      {/* Custom Trailing Cursor Follower */}
+      {!isTouchDevice && (
+        <>
+          <div 
+            ref={cursorRef} 
+            className="fixed top-0 left-0 w-1.5 h-1.5 bg-[#bf9b30] rounded-full pointer-events-none z-50 transition-opacity duration-300"
+          />
+          <div 
+            ref={cursorFollowRef} 
+            data-hovering={isCursorHovering}
+            className="fixed top-0 left-0 w-7 h-7 border border-[#bf9b30]/60 rounded-full pointer-events-none z-50 flex items-center justify-center transition-all duration-300"
+          >
+            {cursorText && (
+              <span className="absolute left-9 top-2 font-mono text-[7px] tracking-[0.2em] text-[#bf9b30] uppercase whitespace-nowrap bg-black/90 px-2 py-0.5 rounded border border-white/5 shadow-xl">
+                {cursorText}
+              </span>
+            )}
+          </div>
+        </>
+      )}
+
       <AnimatePresence mode="wait">
         {/* LANDING PAGE / MENU VIEW (Image 1) */}
         {activePage === 'home' ? (
@@ -255,20 +300,8 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20"
+            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
           >
-            {/* Dark Stone Bas-Relief Background with Parallax vignette overlay */}
-            <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
-              <img
-                src={reliefBg.src}
-                alt="Immersive Garden Relief Background"
-                className="w-full h-full object-cover opacity-35 scale-[1.03] transition-transform duration-[8s] ease-out"
-                referrerPolicy="no-referrer"
-              />
-              {/* Radial deep shadow vignette overlay to replicate Image 1 */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.85)_100%)]" />
-              <div className="absolute inset-0 bg-black/40" />
-            </div>
 
             {/* TOP BAR */}
             <div className="relative w-full flex justify-between items-center z-10">
@@ -276,6 +309,8 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div 
                 className="flex items-center gap-3 cursor-pointer group"
                 onClick={() => navigateTo('home')}
+                onMouseEnter={() => setIsCursorHovering(true)}
+                onMouseLeave={() => setIsCursorHovering(false)}
               >
                 <div className="w-8 h-8 rounded-full border border-[#bf9b30]/40 flex items-center justify-center font-serif text-xs text-[#bf9b30] tracking-wider font-bold">G</div>
                 <div className="flex flex-col text-left">
@@ -288,6 +323,8 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <button 
                 onClick={() => navigateTo('the-studio')}
                 className="flex items-center gap-2 group cursor-pointer transition-all duration-300"
+                onMouseEnter={() => setIsCursorHovering(true)}
+                onMouseLeave={() => setIsCursorHovering(false)}
               >
                 <span className="font-mono text-[9px] tracking-[0.25em] text-white/60 group-hover:text-white uppercase transition-colors">Close</span>
                 <div className="w-4 h-4 border border-white/20 group-hover:border-white/50 rounded flex items-center justify-center transition-colors">
@@ -308,8 +345,14 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                   >
                     <button
                       onClick={() => navigateTo(item.id as PageType)}
-                      onMouseEnter={() => setHoveredIndex(idx)}
-                      onMouseLeave={() => setHoveredIndex(null)}
+                      onMouseEnter={() => {
+                        setHoveredIndex(idx);
+                        setIsCursorHovering(true);
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredIndex(null);
+                        setIsCursorHovering(false);
+                      }}
                       className={`font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-wide transition-all duration-500 cursor-pointer block mx-auto py-1 outline-none ${
                         hoveredIndex === null
                           ? 'text-[#e5e5e5]'
@@ -331,18 +374,25 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               {/* See all projects (Bottom Left) */}
               <button 
                 onClick={() => setIsProjectsOpen(true)}
-                className="font-mono text-[9px] tracking-[0.25em] text-white/55 hover:text-white transition-colors uppercase cursor-pointer flex items-center gap-1 group pb-1 border-b border-white/10 hover:border-white/30"
+                className="relative pb-1 group font-mono text-[9px] tracking-[0.25em] text-white/55 hover:text-white transition-colors uppercase cursor-pointer flex items-center gap-1"
+                onMouseEnter={() => setIsCursorHovering(true)}
+                onMouseLeave={() => setIsCursorHovering(false)}
               >
-                See all projects <span className="inline-block transform group-hover:translate-x-0.5 transition-transform">↖</span>
+                <span>See all projects</span>
+                <span className="inline-block transform group-hover:translate-x-0.5 transition-transform">↖</span>
+                <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
               </button>
 
               {/* Contact us (Bottom Center - Image 1) */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-0">
                 <button 
                   onClick={() => setIsContactOpen(true)}
-                  className="font-serif text-xs tracking-[0.1em] text-white/60 hover:text-white transition-all cursor-pointer hover:underline underline-offset-8"
+                  className="relative pb-2 group font-serif text-xs tracking-[0.1em] text-white/60 hover:text-white transition-colors cursor-pointer"
+                  onMouseEnter={() => setIsCursorHovering(true)}
+                  onMouseLeave={() => setIsCursorHovering(false)}
                 >
-                  Contact us
+                  <span>Contact us</span>
+                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
                 </button>
               </div>
 
@@ -364,40 +414,16 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20 bg-black"
+            className="relative w-full min-h-screen flex flex-col justify-between p-6 sm:p-12 z-20 bg-transparent"
           >
-            {/* Floating green/white fireflies layer */}
-            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-              {FIREFLIES_DATA.map((ff, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#a3ff12]/50 blur-[1px]"
-                  style={{ left: ff.left, top: ff.top }}
-                  initial={{
-                    opacity: 0.1,
-                  }}
-                  animate={{
-                    y: ['-10%', '110%'],
-                    x: ['-5%', '5%'],
-                    opacity: [0.1, 0.7, 0.1],
-                  }}
-                  transition={{
-                    duration: ff.duration,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    delay: ff.delay,
-                  }}
-                />
-              ))}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.95)_100%)]" />
-            </div>
-
             {/* BACK BUTTON (Top Center - Image 2) */}
             <div className="relative w-full flex justify-between items-center z-10">
               {/* Minimal brand logo back link */}
               <div 
                 className="flex items-center gap-2 cursor-pointer opacity-40 hover:opacity-100 transition-opacity"
                 onClick={() => navigateTo('home')}
+                onMouseEnter={() => setIsCursorHovering(true)}
+                onMouseLeave={() => setIsCursorHovering(false)}
               >
                 <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center font-serif text-[10px] text-white">G</div>
               </div>
@@ -406,9 +432,12 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div className="absolute left-1/2 -translate-x-1/2">
                 <button 
                   onClick={() => navigateTo('home')}
-                  className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white pb-0.5 border-b border-transparent hover:border-white/20 transition-all cursor-pointer"
+                  className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
+                  onMouseEnter={() => setIsCursorHovering(true)}
+                  onMouseLeave={() => setIsCursorHovering(false)}
                 >
-                  Back
+                  <span>Back</span>
+                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
                 </button>
               </div>
 
@@ -416,39 +445,33 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <button 
                 onClick={() => setIsProjectsOpen(true)}
                 className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/30 hover:text-white transition-colors"
+                onMouseEnter={() => setIsCursorHovering(true)}
+                onMouseLeave={() => setIsCursorHovering(false)}
               >
                 PROJECTS
               </button>
             </div>
 
-            {/* CENTRAL IMAGE WITH THE FLORAL LETTER & WATER REFLECTION (Image 2) */}
-            <div className="relative flex flex-col items-center justify-center my-auto z-10 py-8">
-              <AnimatePresence mode="wait">
-                <motion.div 
-                  key={activePage}
-                  initial={{ opacity: 0, scale: 0.94 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.94 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative h-[48vh] sm:h-[55vh] max-h-[460px] aspect-[3/4] flex items-center justify-center"
-                >
-                  <img
-                    src={pageDetails[activePage as Exclude<PageType, 'home'>].letterImg.src}
-                    alt={`${activePage} floral letter`}
-                    className="h-full w-auto object-contain select-none"
-                    referrerPolicy="no-referrer"
-                  />
-                  {/* Water Reflection Wave Animation Overlay at base */}
-                  <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black via-black/30 to-transparent pointer-events-none" />
-                </motion.div>
-              </AnimatePresence>
+            {/* CENTRAL VIEWPORT SPACER FOR THE PERSISTENT WEBGL LETTER */}
+            <div 
+              className="relative flex flex-col items-center justify-center my-auto z-10 py-8 pointer-events-auto"
+              onMouseEnter={() => {
+                setCursorText("RIPPLE");
+                setIsCursorHovering(true);
+              }}
+              onMouseLeave={() => {
+                setCursorText("");
+                setIsCursorHovering(false);
+              }}
+            >
+              <div className="h-[48vh] sm:h-[55vh] max-h-[460px] aspect-[3/4]" />
             </div>
 
             {/* TYPOGRAPHIC DESCRIPTION & CONTROLS BLOCK (Image 2) */}
             <div className="relative w-full grid grid-cols-1 md:grid-cols-12 items-end gap-6 z-10">
               
               {/* Bottom-Left Column: Title & Paragraph (Image 2 layout) */}
-              <div className="md:col-span-6 flex flex-col text-left space-y-4 max-w-sm sm:max-w-md">
+              <div className="md:col-span-6 flex flex-col text-left space-y-4 max-w-sm sm:max-w-xl">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activePage}
@@ -457,12 +480,27 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
                     exit={{ opacity: 0, x: 15 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <h2 className="font-serif text-2xl sm:text-3xl font-light tracking-wide text-white mb-2 leading-none">
+                    <h2 className="font-serif text-[32px] md:text-[2.8vw] font-normal leading-none text-white mb-4">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].title}
                     </h2>
-                    <p className="font-serif text-sm sm:text-base text-white/55 leading-relaxed font-light">
+                    <p className="font-serif text-[18px] md:text-[1.65vw] text-white/60 leading-relaxed font-light mb-6">
                       {pageDetails[activePage as Exclude<PageType, 'home'>].description}
                     </p>
+                    
+                    {/* Details list columns */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-5 border-t border-white/10">
+                      {pageDetails[activePage as Exclude<PageType, 'home'>].detailsList.map((detail, idx) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center gap-1.5 font-mono text-[8px] tracking-[0.2em] text-[#bf9b30] uppercase">
+                            {detail.icon}
+                            <span>{detail.title}</span>
+                          </div>
+                          <p className="font-sans text-[11px] text-white/50 leading-normal font-light">
+                            {detail.desc}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -471,9 +509,12 @@ export default function StudioApp({ initialSlug }: StudioAppProps) {
               <div className="md:col-span-3 flex justify-center py-2 md:py-0">
                 <button 
                   onClick={() => navigateTo(pageDetails[activePage as Exclude<PageType, 'home'>].nextPage)}
-                  className="font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white pb-0.5 border-b border-transparent hover:border-white/20 transition-all cursor-pointer"
+                  className="relative pb-0.5 group font-mono text-[9px] tracking-[0.25em] uppercase text-white/50 hover:text-white transition-colors cursor-pointer"
+                  onMouseEnter={() => setIsCursorHovering(true)}
+                  onMouseLeave={() => setIsCursorHovering(false)}
                 >
-                  Next
+                  <span>Next</span>
+                  <span className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 scale-x-100 group-hover:scale-x-0 origin-right transition-transform duration-300 ease-out" />
                 </button>
               </div>
 
